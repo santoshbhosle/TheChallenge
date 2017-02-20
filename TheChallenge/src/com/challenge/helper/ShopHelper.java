@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.Proxy;
 import java.net.SocketAddress;
 import java.net.URL;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import com.challenge.dto.GeocodeResponseDTO;
 import com.challenge.dto.ShopDTO;
+import com.challenge.util.PropertyManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -34,7 +36,7 @@ public class ShopHelper {
 		JsonNode node = null;
 		try {
 			
-			StringBuffer encodedUrl = new StringBuffer("http://maps.googleapis.com/maps/api/geocode/json?address=");
+			StringBuffer encodedUrl = new StringBuffer(PropertyManager.getPopertyValue("geocoding.url"));
 			encodedUrl.append(URLEncoder.encode(shopDTO.getShopName(), "UTF-8"));
 			if(null != shopDTO.getShopAddressDTO().getNumber()){
 				encodedUrl.append(URLEncoder.encode(" ", "UTF-8")); 
@@ -49,12 +51,7 @@ public class ShopHelper {
 			
 			logger.debug("url query :: " + url.getQuery());
 			
-			SocketAddress addr = new InetSocketAddress("proxy.cognizant.com", 6050);
-			Proxy proxy = new Proxy(Proxy.Type.HTTP, addr);
-					
-			conn = (HttpURLConnection) url.openConnection(proxy);
-			conn.setRequestMethod("GET");
-			conn.setRequestProperty("Accept", "application/json");
+			conn = urlConnection(url);
 			
 			if (conn.getResponseCode() != 200) {
 				throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
@@ -67,10 +64,12 @@ public class ShopHelper {
 			ObjectMapper mapper = new ObjectMapper();
 			node = mapper.readTree(geocodingResponse);
 		  } catch (MalformedURLException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage(), e);
 		  } catch (IOException e) {
-			e.printStackTrace();
-		  }finally {
+			logger.error(e.getMessage(), e);
+		  } catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		  } finally {
 			conn.disconnect();
 		}
 		
@@ -87,7 +86,7 @@ public class ShopHelper {
 		HttpURLConnection conn = null;
 		GeocodeResponseDTO geocodingResponseDTO = null;
 		try {
-			StringBuffer sb = new StringBuffer("http://maps.googleapis.com/maps/api/geocode/xml?latlng=");
+			StringBuffer sb = new StringBuffer(PropertyManager.getPopertyValue("reverse.geocoding.url"));
 			sb.append(latitude);
 			sb.append(URLEncoder.encode(",", "UTF-8"));
 			sb.append(longitude);
@@ -96,12 +95,7 @@ public class ShopHelper {
 			
 			logger.debug("url query :: " + url.getQuery());
 			
-			SocketAddress addr = new InetSocketAddress("proxy.cognizant.com", 6050);
-			Proxy proxy = new Proxy(Proxy.Type.HTTP, addr);
-					
-			conn = (HttpURLConnection) url.openConnection(proxy);
-			conn.setRequestMethod("GET");
-			conn.setRequestProperty("Accept", "application/json");
+			conn = urlConnection(url);
 			
 			if (conn.getResponseCode() != 200) {
 				throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
@@ -117,15 +111,26 @@ public class ShopHelper {
 			geocodingResponseDTO = (GeocodeResponseDTO) unmarshaller.unmarshal(reader);	
 			
 		  } catch (MalformedURLException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage(), e);
 		  } catch (IOException e) {
-			e.printStackTrace();
+			logger.error(e.getMessage(), e);
 		  } catch (Exception e) {
-			e.printStackTrace();
-		  }finally {
+			logger.error(e.getMessage(), e);
+		  } finally {
 			conn.disconnect();
 		}
 		
 		return geocodingResponseDTO;
+	}
+
+	private static HttpURLConnection urlConnection(URL url) throws IOException, ProtocolException {
+		HttpURLConnection conn;
+		SocketAddress addr = new InetSocketAddress(PropertyManager.getPopertyValue("proxy.hostname"), Integer.valueOf(PropertyManager.getPopertyValue("proxy.port")));
+		Proxy proxy = new Proxy(Proxy.Type.HTTP, addr);
+				
+		conn = (HttpURLConnection) url.openConnection(proxy);
+		conn.setRequestMethod("GET");
+		conn.setRequestProperty("Accept", "application/json");
+		return conn;
 	}
 }
