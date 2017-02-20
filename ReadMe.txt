@@ -1,7 +1,8 @@
 1. Download codebase
 2. Import project in eclipse
-3. Run Application.java as Java Application
-4. Use Postman to test
+3. Change proxy setting in challenge.properties - proxy.hostname and proxy.port
+4. Run Application.java as Java Application
+5. Use Postman to test
 	POST : http://localhost:8080/shops
 			To add shop set raw body as below
 			{"shopName":"Starbucks","shopLongitude":null,"shopLatitude":null,"shopAddress":{"number":null,"postCode":3000}}
